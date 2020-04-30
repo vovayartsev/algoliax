@@ -250,6 +250,16 @@ defmodule Algoliax.Indexer do
   @callback build_object(model :: Map.t()) :: Map.t()
 
   @doc """
+  Override this function to provide custom objectID for the model
+
+  ## Example
+      @impl Algoliax.Indexer
+      def get_object_id(%Cat{id: id}), do: "Cat:" <> to_string(id)
+      def get_object_id(%Dog{id: id}), do: "Dog:" <> to_string(id)
+  """
+  @callback get_object_id(model :: Map.t()) :: binary() | :use_default_implementation
+
+  @doc """
   Check if current object must be indexed or not. By default it's always true. To override this behaviour overide this function in your model
 
   ## Example
@@ -390,11 +400,16 @@ defmodule Algoliax.Indexer do
       end
 
       @impl Algoliax.Indexer
+      def get_object_id(model) do
+        :use_default_implementation
+      end
+
+      @impl Algoliax.Indexer
       def to_be_indexed?(_) do
         true
       end
 
-      defoverridable(to_be_indexed?: 1, build_object: 1)
+      defoverridable(to_be_indexed?: 1, build_object: 1, get_object_id: 1)
     end
   end
 end

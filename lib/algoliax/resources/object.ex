@@ -13,7 +13,7 @@ defmodule Algoliax.Resources.Object do
   def get_object(module, settings, model) do
     Index.ensure_settings(module, settings)
 
-    object_id = get_object_id(settings, model)
+    object_id = get_object_id(module, settings, model)
     Requests.get_object(index_name(module, settings), %{objectID: object_id})
   end
 
@@ -54,17 +54,17 @@ defmodule Algoliax.Resources.Object do
   def delete_object(module, settings, model) do
     Index.ensure_settings(module, settings)
     call_indexer(:delete_object, module, settings, model)
-    object = %{objectID: get_object_id(settings, model)}
+    object = %{objectID: get_object_id(module, settings, model)}
 
     module
     |> index_name(settings)
     |> Requests.delete_object(object)
   end
 
-  defp build_batch_object(_module, settings, model, "deleteObject" = action) do
+  defp build_batch_object(module, settings, model, "deleteObject" = action) do
     %{
       action: action,
-      body: %{objectID: get_object_id(settings, model)}
+      body: %{objectID: get_object_id(module, settings, model)}
     }
   end
 
@@ -77,11 +77,20 @@ defmodule Algoliax.Resources.Object do
 
   defp build_object(module, settings, model) do
     apply(module, :build_object, [model])
-    |> Map.put(:objectID, get_object_id(settings, model))
+    |> Map.put(:objectID, get_object_id(module, settings, model))
   end
 
-  defp get_object_id(settings, model) do
-    Map.get(model, object_id_attribute(settings))
+  defp get_object_id(module, settings, model) do
+    case apply(module, :get_object_id, [model]) do
+      :use_default_implementation ->
+        Map.fetch!(model, object_id_attribute(settings))
+
+      id when is_binary(id) ->
+        id
+
+      id when is_integer(id) ->
+        to_string(id)
+    end
   end
 
   defp get_action(module, model, opts) do
